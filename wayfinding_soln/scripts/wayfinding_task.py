@@ -258,7 +258,6 @@ if __name__ == '__main__':
                         
                         # Calculation of actual thrusts to provide
                         tau2 = res_mat_inv.dot(tau1)
-                        print(tau2)
 
                     else:
                         # print("LOS")
@@ -271,11 +270,6 @@ if __name__ == '__main__':
                         line_coeff = [y_1-y_0, -(x_1-x_0), x_1*y_0-x_0*y_1]
                         e = crosstrack(wamv_pose, line_coeff)
 
-                        # xp = wamv_pose[0] - e*sin(alpha)
-                        # yp = wamv_pose[1] + e*cos(alpha)
-
-                        # x_los = xp + delta*cos(alpha)
-                        # y_los = yp + delta*sin(alpha)
                         psi_d = atan2(current_goal[1]-wamv_pose[1], current_goal[0]-wamv_pose[0])
                         # psi_d = atan2(y_los-wamv_pose[1], x_los-wamv_pose[0])
                         # psi_d = atan2(y_1-y_0, x_1-x_0)
@@ -306,7 +300,6 @@ if __name__ == '__main__':
                         # # Rotation matrix ( rotation about z by angle psi )
                         rot_mat = np.array([[cos(psi), -sin(psi), 0], [sin(psi), cos(psi), 0], [0, 0, 1]])
                         # Thrust alocation to Body frame
-                        # t_mat = np.array([[1, 1, 0], [0, 0, 1], [-1, 1, 0]])
                         t_mat = np.array([[1, 1, 0], [0, 0, 1], [-1, 1, 0]])
         
                         # Resultant matrix
@@ -317,16 +310,10 @@ if __name__ == '__main__':
                     
                         # Calculation of actual thrusts to provide
                         tau2 = res_mat_inv.dot(tau1)
-                        # tau = tau2/(np.linalg.norm(tau2))
-                        # print(tau2)
                     
                     msg_l = inverse_glf_map(tau2[0])
                     msg_r = inverse_glf_map(tau2[1])
                     msg_lat = inverse_glf_map(tau2[2])
-
-                    # msg_l = tau[0]
-                    # msg_r = tau[1]
-                    # msg_lat = tau[2]
                     
                     pub_l_cmd.publish(msg_l)
                     pub_r_cmd.publish(msg_r)
