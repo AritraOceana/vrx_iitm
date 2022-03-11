@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
-  vrx_gazebo
+  # vrx_gazebo
 )
 
 ## System dependencies are found with CMake's conventions
