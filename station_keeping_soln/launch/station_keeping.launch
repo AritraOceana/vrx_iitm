@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+	<!-- Launch the localization file -->
+	<include file="$(find station_keeping_soln)/launch/localization.launch"/>
+	<!-- Launch the solution -->
+	<node name="station_keeping_node" pkg="station_keeping_soln" type="station_keeping.py" />
+</launch>
