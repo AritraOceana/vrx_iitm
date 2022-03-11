@@ -1,10 +1,9 @@
 <?xml version="1.0"?>
 <launch>
-	<!-- Below line is not required as the world will be unknown to us -->
-	<!-- <include file="$(find vrx_gazebo)/launch/wayfinding.launch"/> -->
-	<include file="$(find wamv_gazebo)/launch/rviz_vrx.launch"/>
-	<include file="$(find wamv_gazebo)/launch/localization_example.launch"/>
+
+	<!-- Launch the localisation script -->
+	<include file="$(find wayfinding_soln)/launch/localization.launch"/>
 	
 	<!-- Launch the solution -->
-	<node name="goal_pose_sub" pkg="wayfinding_soln" type="wayfinding_task.py" />
+	<node name="wayfindng_solution_node" pkg="wayfinding_soln" type="wayfinding_task.py" />
 </launch>

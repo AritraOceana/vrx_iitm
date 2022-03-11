@@ -187,7 +187,7 @@ def odom_filtered_callback(msg):
 
 
 if __name__ == '__main__':
-    rospy.init_node('goal_pose_sub')
+    rospy.init_node('wayfindng_solution_node')
     # Subscribing to all important topics
     task_time_sub = rospy.Subscriber("/vrx/task/info",Task,task_timeout_callback)
     goal_sub = rospy.Subscriber("/vrx/wayfinding/waypoints",GeoPath,goal_path_sub_callback)
