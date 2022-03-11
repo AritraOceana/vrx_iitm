@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+
+	<!-- Launch the localisation script -->
+	<include file="$(find wayfinding_soln)/launch/localization.launch"/>
+	
+	<!-- Launch the solution -->
+	<node name="wayfindng_solution_node" pkg="wayfinding_soln" type="wayfinding_task.py" />
+</launch>
