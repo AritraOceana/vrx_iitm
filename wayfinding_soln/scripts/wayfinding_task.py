@@ -167,7 +167,7 @@ def odom_filtered_callback(msg):
     orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
     (roll, pitch, yaw) = euler_from_quaternion (orientation_list)
 
-    if  297 >= remaining_time > 295:
+    if  299 >= remaining_time > 297:
         x_initial = msg.pose.pose.position.x
         y_initial = msg.pose.pose.position.y
         yaw_initial = yaw
@@ -205,7 +205,7 @@ if __name__ == '__main__':
     msg_lat = Float32()
     
     while timeout == False:
-        if remaining_time <= 295:
+        if remaining_time <= 297:
             # print(goal_pose_seq)
             for i in range(1, len(goal_pose_seq)):
 
@@ -214,11 +214,16 @@ if __name__ == '__main__':
                 print(current_goal)
                 er_int = 0
 
+                error_threshold = 0.8
+
+                if i == len(goal_pose_seq)-1:
+                    error_threshold = 0
+
                 # Initiallize the minimum goal pose error variable
                 min_current_goal_pose_error = get_pose_error(wamv_pose, current_goal)
 
                 # Keep targeting the same goal till the pose error for it drops below 0.12
-                while min_current_goal_pose_error > 0.1:
+                while min_current_goal_pose_error > error_threshold:
                 # while min_current_goal_pose_error > 1.2:
 
                     current_goal_pose_error = get_pose_error(wamv_pose, current_goal)
@@ -277,8 +282,8 @@ if __name__ == '__main__':
                         Kp = np.array([[100, 0, 0],[0, 200, 0],[0, 0, 500]])       # Proportional gain
                         Kd = np.array([[10, 0, 0],[0, 50, 0],[0, 0, 10]])           # Derivative gains
                         
-                        er_los = np.array([0, 0, 0])
-                        er_los_dot = np.array([0, 0, 0])
+                        er_los = np.array([0.0, 0, 0])
+                        er_los_dot = np.array([0.0, 0, 0])
                         er_los[0] = delta
                         er_los[1] = e
                         er_los[2] = change_range(psi_d-wamv_pose[2])
