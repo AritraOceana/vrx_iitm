@@ -10,7 +10,7 @@ project(wayfinding_soln)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
-  # vrx_gazebo
+  vrx_gazebo
 )
 
 ## System dependencies are found with CMake's conventions
