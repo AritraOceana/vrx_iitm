@@ -143,7 +143,7 @@ if __name__ == '__main__':
 
     task_time_sub = rospy.Subscriber("/vrx/task/info",Task,task_timeout_callback)
     rate = rospy.Rate(10)
-    time.sleep()
+    time.sleep(3)
 
     if task_name == "stationkeeping":
 
