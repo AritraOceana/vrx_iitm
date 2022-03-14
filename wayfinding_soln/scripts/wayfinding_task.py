@@ -197,7 +197,7 @@ if __name__ == '__main__':
     # Subscribing to all important topics
     task_time_sub = rospy.Subscriber("/vrx/task/info",Task,task_timeout_callback)
     rate = rospy.Rate(10)
-    time.sleep(3)
+    time.sleep(10)
 
     if task_name == "wayfinding":
 
