@@ -77,6 +77,8 @@ def crosstrack(my_pose, line_coeff):
 def change_range(angle):
     if -2*pi<=angle<=-pi:
         return angle+2*pi
+    elif pi<angle<=2*pi:
+        return angle-2*pi
     else:
         return angle
 
