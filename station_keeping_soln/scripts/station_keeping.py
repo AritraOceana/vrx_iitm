@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
+import time
 import numpy as np
 from math import atan2, cos, sin, radians, pi, sqrt, log
 import pyproj
@@ -20,6 +21,7 @@ er_int = np.array([0, 0, 0])        # variable to store the er integration
 timeout = False                     # timeout or not
 pose_error = 0.0                    # didn't use. maybe useful for just checking?
 tau = np.array([[1],[1],[1]])       # torques/moments in x,y and yaw
+task_name = None
 
 # Kp = -np.array([[2.5, 0, 0],[0, 2.5, 0],[0, 0, 2]])       # Proportional gain
 # Kd = np.array([[5, 0, 0],[0, 5, 0],[0, 0, -5]])           # Derivative gains
@@ -94,8 +96,10 @@ def goal_sub_callback(msg):
 
 # Callback function to get timeout value 
 def task_timeout_callback(msg):
-	global timeout
-	timeout = msg.timed_out
+    global timeout
+    global task_name
+    task_name = msg.name
+    timeout = msg.timed_out
 	
 
 # Callback function to get pose error value
@@ -136,53 +140,63 @@ def odom_filtered_callback(msg):
 if __name__ == '__main__':
     rospy.init_node('station_keeping_node')
     # Subscribing to all important topics
-    goal_sub = rospy.Subscriber("/vrx/station_keeping/goal",GeoPoseStamped,goal_sub_callback)
+
     task_time_sub = rospy.Subscriber("/vrx/task/info",Task,task_timeout_callback)
-    pose_error_sub = rospy.Subscriber("/vrx/station_keeping/pose_error",Float64,pose_error_callback)
-    wamv_odom_filtered = rospy.Subscriber("/wamv/robot_localization/odometry/filtered",Odometry,odom_filtered_callback)
-        
-    # Publishers for the thrusters
-    pub_l_cmd = rospy.Publisher("/wamv/thrusters/left_thrust_cmd", Float32, queue_size = 10)
-    pub_r_cmd = rospy.Publisher("/wamv/thrusters/right_thrust_cmd", Float32, queue_size = 10)
-    pub_lat_cmd = rospy.Publisher("/wamv/thrusters/lateral_thrust_cmd", Float32, queue_size = 10)
     rate = rospy.Rate(10)
+    time.sleep()
+
+    if task_name == "stationkeeping":
+
+        print(task_name)
+
+        goal_sub = rospy.Subscriber("/vrx/station_keeping/goal",GeoPoseStamped,goal_sub_callback)
+        pose_error_sub = rospy.Subscriber("/vrx/station_keeping/pose_error",Float64,pose_error_callback)
+        wamv_odom_filtered = rospy.Subscriber("/wamv/robot_localization/odometry/filtered",Odometry,odom_filtered_callback)
+            
+        # Publishers for the thrusters
+        pub_l_cmd = rospy.Publisher("/wamv/thrusters/left_thrust_cmd", Float32, queue_size = 10)
+        pub_r_cmd = rospy.Publisher("/wamv/thrusters/right_thrust_cmd", Float32, queue_size = 10)
+        pub_lat_cmd = rospy.Publisher("/wamv/thrusters/lateral_thrust_cmd", Float32, queue_size = 10)
+            
+        msg_l = Float32()
+        msg_r = Float32()
+        msg_lat = Float32()
         
-    msg_l = Float32()
-    msg_r = Float32()
-    msg_lat = Float32()
+        while timeout == False:
+
+            # heading angle
+            psi = er[2] + goal_pose[2]
+
+            # # Needs some changes (correct relation between body-fixed frame thrusts and applied thrusts)
+            # Rotation matrix ( rotation about z by angle phi )
+            rot_mat = np.array([[cos(psi), -sin(psi), 0], [sin(psi), cos(psi), 0], [0, 0, 1]])
+            # Thrust alocation to Body frame
+            t_mat = np.array([[1, 1, 0], [0, 0, 1], [-1, 1, 0]])
+
+            # Resultant matrix
+            res_mat = rot_mat.dot(t_mat)
+            res_mat_inv = np.linalg.inv(res_mat)
+
+            # integral error
+            er_int = er_int + (er)*(1/15)
+
+        # PID controller output
+            tau1 = Kp.dot(er) + Kd.dot(er_dot) + Ki.dot(er_int)
+
+        # Calculation of actual thrusts to provide
+            tau2 = res_mat_inv.dot(tau1)
+            # tau = tau2/(np.linalg.norm(tau2))         
+            msg_l = inverse_glf_map(tau2[0])
+            msg_r = inverse_glf_map(tau2[1])
+            msg_lat = inverse_glf_map(tau2[2])
+
+            # msg_l = tau[0]
+            # msg_r = tau[1]
+            # msg_lat = tau[2]
+            pub_l_cmd.publish(msg_l)
+            pub_r_cmd.publish(msg_r)
+            pub_lat_cmd.publish(msg_lat)
+            rate.sleep()
     
-    while timeout == False:
-
-        # heading angle
-        psi = er[2] + goal_pose[2]
-
-        # # Needs some changes (correct relation between body-fixed frame thrusts and applied thrusts)
-        # Rotation matrix ( rotation about z by angle phi )
-        rot_mat = np.array([[cos(psi), -sin(psi), 0], [sin(psi), cos(psi), 0], [0, 0, 1]])
-        # Thrust alocation to Body frame
-        t_mat = np.array([[1, 1, 0], [0, 0, 1], [-1, 1, 0]])
-
-        # Resultant matrix
-        res_mat = rot_mat.dot(t_mat)
-        res_mat_inv = np.linalg.inv(res_mat)
-
-        # integral error
-        er_int = er_int + (er)*(1/15)
-
-	# PID controller output
-        tau1 = Kp.dot(er) + Kd.dot(er_dot) + Ki.dot(er_int)
-
-	# Calculation of actual thrusts to provide
-        tau2 = res_mat_inv.dot(tau1)
-        # tau = tau2/(np.linalg.norm(tau2))         
-        msg_l = inverse_glf_map(tau2[0])
-        msg_r = inverse_glf_map(tau2[1])
-        msg_lat = inverse_glf_map(tau2[2])
-
-        # msg_l = tau[0]
-        # msg_r = tau[1]
-        # msg_lat = tau[2]
-        pub_l_cmd.publish(msg_l)
-        pub_r_cmd.publish(msg_r)
-        pub_lat_cmd.publish(msg_lat)
-        rate.sleep()
+    else:
+        exit()
