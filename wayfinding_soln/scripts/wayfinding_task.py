@@ -226,7 +226,7 @@ if __name__ == '__main__':
                     print(current_goal)
                     er_int = 0
 
-                    error_threshold = 0.8
+                    error_threshold = 0.7
 
                     if i == len(goal_pose_seq)-1:
                         error_threshold = 0
