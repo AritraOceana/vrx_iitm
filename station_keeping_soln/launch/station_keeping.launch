@@ -5,4 +5,5 @@
 	<!-- Launch the solution -->
 	<node name="station_keeping_node" pkg="station_keeping_soln" type="station_keeping.py" />
 	<node name="wayfindng_solution_node" pkg="wayfinding_soln" type="wayfinding_task.py" />
+	<node name="perception_node" pkg="perception" type="detection.py" />
 </launch>
