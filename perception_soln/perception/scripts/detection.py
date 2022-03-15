@@ -37,7 +37,7 @@ class yolo_detector():
         self.model = cv2.dnn_DetectionModel(net)
 
          # make publisher object
-        self.publisher = rospy.Publisher('vrx/perception/landmark', GeoPoseStamped, queue_size=10)
+        self.publisher = rospy.Publisher('/vrx/perception/landmark', GeoPoseStamped, queue_size=10)
 
         # Crete an object of the message type
         self.gps = GeoPoseStamped()
