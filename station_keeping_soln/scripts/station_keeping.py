@@ -145,7 +145,7 @@ if __name__ == '__main__':
     rate = rospy.Rate(10)
     time.sleep(10)
 
-    if task_name == "stationkeeping":
+    if task_name == "station_keeping":
 
         print(task_name)
 
