@@ -98,6 +98,6 @@ class yolo_detector():
     self.timeout = msg.timed_out
         
 if __name__ == '__main__':
-    detector = yolo_detector('root/vrx_soln_ws/src/VRX_iitm/perception_soln/perception/model/obj.names', 
-                          'root/vrx_soln_ws/src/VRX_iitm/perception_soln/perception/model/cfg/yolov4-obj.cfg', 
-                          'root/vrx_soln_ws/src/VRX_iitm/perception_soln/perception//model/yolov4-obj_12500.weights')
+    detector = yolo_detector('/root/vrx_soln_ws/src/VRX_iitm/perception_soln/perception/model/obj.names', 
+                          '/root/vrx_soln_ws/src/VRX_iitm/perception_soln/perception/cfg/yolov4-obj.cfg', 
+                          '/root/vrx_soln_ws/src/VRX_iitm/perception_soln/perception/model/yolov4-obj_12500.weights')
