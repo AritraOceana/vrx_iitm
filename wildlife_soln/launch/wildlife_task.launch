@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+
+	<!-- Launch the localisation script -->
+	<include file="$(find wildlife_soln)/launch/localization.launch"/>
+	
+	<!-- Launch the solution -->
+	<node name="wildlife_solution_node" pkg="wildlife_soln" type="wildlife_task.py" />
+</launch>

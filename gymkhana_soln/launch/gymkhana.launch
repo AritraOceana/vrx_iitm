@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+
+	<!-- Launch the localisation script -->
+	<include file="$(find gymkhana_soln)/launch/localization.launch"/>
+	<!-- Apply Voxel and PassThrough Filters -->
+	<node name="passthrough_filter" pkg="docking_soln" type="passthrough_filter" />
+	<node name="voxel_filter" pkg="docking_soln" type="voxel_filter" />
+	
+	<!-- Launch the solution -->
+	<!-- <node name="gymkhana_solution_node" pkg="gymkhana_soln" type="gymkhana_task.py" /> -->
+</launch>

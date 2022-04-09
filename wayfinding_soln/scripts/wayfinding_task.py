@@ -25,9 +25,8 @@ timeout = False                # timeout or not
 remaining_time = 300           # remaining time for the task
 task_name = None
 
-delta = 12                     # LOS guidance ( lookahead distance )
+delta = 10                     # LOS guidance ( lookahead distance )
 
-# current_goal = np.array([0.0, 0, 0])   # 
 
 # Function to map the thrust to the commands in range(-1,1)
 def inverse_glf_map(T):
@@ -199,150 +198,161 @@ if __name__ == '__main__':
     rate = rospy.Rate(10)
     time.sleep(10)
 
-    if task_name == "wayfinding":
-
-        print(task_name)
-
-        goal_sub = rospy.Subscriber("/vrx/wayfinding/waypoints",GeoPath,goal_path_sub_callback)
-        #pose_error_sub = rospy.Subscriber("/vrx/station_keeping/pose_error",Float64,pose_error_callback)
-        wamv_odom_filtered = rospy.Subscriber("/wamv/robot_localization/odometry/filtered",Odometry,odom_filtered_callback)
-            
-        # Publishers for the thrusters
-        pub_l_cmd = rospy.Publisher("/wamv/thrusters/left_thrust_cmd", Float32, queue_size = 10)
-        pub_r_cmd = rospy.Publisher("/wamv/thrusters/right_thrust_cmd", Float32, queue_size = 10)
-        pub_lat_cmd = rospy.Publisher("/wamv/thrusters/lateral_thrust_cmd", Float32, queue_size = 10)
-            
-        msg_l = Float32()
-        msg_r = Float32()
-        msg_lat = Float32()
+    goal_sub = rospy.Subscriber("/vrx/wayfinding/waypoints",GeoPath,goal_path_sub_callback)
+    #pose_error_sub = rospy.Subscriber("/vrx/station_keeping/pose_error",Float64,pose_error_callback)
+    wamv_odom_filtered = rospy.Subscriber("/wamv/robot_localization/odometry/filtered",Odometry,odom_filtered_callback)
         
-        while timeout == False:
-            if remaining_time <= 297:
-                # print(goal_pose_seq)
-                for i in range(1, len(goal_pose_seq)):
+    # Publishers for the thrusters
+    pub_l_cmd = rospy.Publisher("/wamv/thrusters/left_thrust_cmd", Float32, queue_size = 10)
+    pub_r_cmd = rospy.Publisher("/wamv/thrusters/right_thrust_cmd", Float32, queue_size = 10)
+    pub_lat_cmd = rospy.Publisher("/wamv/thrusters/lateral_thrust_cmd", Float32, queue_size = 10)
+        
+    msg_l = Float32()
+    msg_r = Float32()
+    msg_lat = Float32()
+    
+    while timeout == False:
+        if remaining_time <= 297:
+            # print(goal_pose_seq)
+            for i in range(1, len(goal_pose_seq)):
 
-                    # get the current goal
-                    current_goal = goal_pose_seq[i]
-                    print(current_goal)
-                    er_int = 0
+                # get the current goal
+                current_goal = goal_pose_seq[i]
+                print(current_goal)
+                er_int = 0
 
-                    error_threshold = 0.7
+                error_threshold = 0.4
 
-                    if i == len(goal_pose_seq)-1:
-                        error_threshold = 0
+                if i == len(goal_pose_seq)-1:
+                    error_threshold = 0
 
-                    # Initiallize the minimum goal pose error variable
-                    min_current_goal_pose_error = get_pose_error(wamv_pose, current_goal)
+                # Initiallize the minimum goal pose error variable
+                min_current_goal_pose_error = get_pose_error(wamv_pose, current_goal)
 
-                    # Keep targeting the same goal till the pose error for it drops below 0.12
-                    while min_current_goal_pose_error > error_threshold:
-                    # while min_current_goal_pose_error > 1.2:
+                timer = 0
 
-                        current_goal_pose_error = get_pose_error(wamv_pose, current_goal)
-                        if current_goal_pose_error < min_current_goal_pose_error:
-                            min_current_goal_pose_error = current_goal_pose_error
-
-                        # Perform station keeping if within 10 m from the goal else LOS guidance
-                        # Get the error values for either cases
-                        if euclidean_dist(wamv_pose, current_goal) < 10:
-                            # print("Station_keeping")
-                            er[0] = wamv_pose[0] - current_goal[0]
-                            er[1] = wamv_pose[1] - current_goal[1]
-                            er[2] = change_range(wamv_pose[2] - current_goal[2])
-
-                            # integral error in case of station keeping only
-                            er_int = er_int + (er)*(1/15)
-
-                            Kp = -np.array([[200, 0, 0],[0, 200, 0],[0, 0, 200]])       # Proportional gain
-                            Kd = np.array([[50, 0, 0],[0, 50, 0],[0, 0, -50]])           # Derivative gains
-                            Ki = -np.array([[0, 0, 0],[0, 0, 0],[0, 0, 1]])           # Integral 
-                            
-                            tau1 = Kp.dot(er) + Kd.dot(er_dot) + Ki.dot(er_int)
-
-                            # heading angle
-                            psi = wamv_pose[2]
-                            
-                            # # Needs some changes (correct relation between body-fixed frame thrusts and applied thrusts)
-                            # # Rotation matrix ( rotation about z by angle psi )
-                            rot_mat = np.array([[cos(psi), -sin(psi), 0], [sin(psi), cos(psi), 0], [0, 0, 1]])
-                            # Thrust alocation to Body frame
-                            # t_mat = np.array([[1, 1, 0], [0, 0, 1], [-1, 1, 0]])
-                            t_mat = np.array([[1, 1, 0], [0, 0, 1], [-1, 1, 0]])
-            
-                            # Resultant matrix
-                            res_mat = rot_mat.dot(t_mat)
-                            res_mat_inv = np.linalg.inv(res_mat)
-                            
-                            # Calculation of actual thrusts to provide
-                            tau2 = res_mat_inv.dot(tau1)
-
-                        else:
-                            # print("LOS")
-                            # Get the required geometrical values for LOS guidance
-                            x_0 = goal_pose_seq[i-1][0]
-                            y_0 = goal_pose_seq[i-1][1]
-                            x_1 = goal_pose_seq[i][0]
-                            y_1 = goal_pose_seq[i][1]
-                            alpha = atan2(y_1-y_0,x_1-x_0)
-                            line_coeff = [y_1-y_0, -(x_1-x_0), x_1*y_0-x_0*y_1]
-                            e = crosstrack(wamv_pose, line_coeff)
-
-                            psi_d = atan2(current_goal[1]-wamv_pose[1], current_goal[0]-wamv_pose[0])
-                            # psi_d = atan2(y_los-wamv_pose[1], x_los-wamv_pose[0])
-                            # psi_d = atan2(y_1-y_0, x_1-x_0)
-                            
-                            Kp = np.array([[100, 0, 0],[0, 200, 0],[0, 0, 500]])       # Proportional gain
-                            Kd = np.array([[10, 0, 0],[0, 50, 0],[0, 0, 10]])           # Derivative gains
-                            
-                            er_los = np.array([0.0, 0, 0])
-                            er_los_dot = np.array([0.0, 0, 0])
-                            er_los[0] = delta
-                            er_los[1] = e
-                            er_los[2] = change_range(psi_d-wamv_pose[2])
-                            
-                            v = er_dot[1]
-                            u = er_dot[0]
-                            chi = atan2(v,u)
-                            U = sqrt(u**2 + v**2)
-                            theta = (pi/2) - chi + alpha
-                            
-                            er_los_dot[0] = U*cos(theta)
-                            er_los_dot[1] = U*sin(theta)
-                            er_los_dot[2] = er_dot[2]
-
-                            # heading angle
-                            psi = wamv_pose[2] - alpha
-                            
-                            # # Needs some changes (correct relation between body-fixed frame thrusts and applied thrusts)
-                            # # Rotation matrix ( rotation about z by angle psi )
-                            rot_mat = np.array([[cos(psi), -sin(psi), 0], [sin(psi), cos(psi), 0], [0, 0, 1]])
-                            # Thrust alocation to Body frame
-                            t_mat = np.array([[1, 1, 0], [0, 0, 1], [-1, 1, 0]])
-            
-                            # Resultant matrix
-                            res_mat = rot_mat.dot(t_mat)
-                            res_mat_inv = np.linalg.inv(res_mat)
-
-                            tau1 = Kp.dot(er_los) + Kd.dot(er_los_dot)
-                        
-                            # Calculation of actual thrusts to provide
-                            tau2 = res_mat_inv.dot(tau1)
-                        
-                        msg_l = inverse_glf_map(tau2[0])
-                        msg_r = inverse_glf_map(tau2[1])
-                        msg_lat = inverse_glf_map(tau2[2])
-                        
-                        pub_l_cmd.publish(msg_l)
-                        pub_r_cmd.publish(msg_r)
-                        pub_lat_cmd.publish(msg_lat)
-                        rate.sleep()
+                # Keep targeting the same goal till the pose error for it drops below 0.12
+                while min_current_goal_pose_error > error_threshold:
+                # while min_current_goal_pose_error > 1.2:
                     
-                    print("Goal "+str(i)+" achieved!")
-                    if i == len(goal_pose_seq)-1:
-                        print("All waypoints reached!")
-                        exit()
+                    print(min_current_goal_pose_error)
 
-    else:
-        exit()
+                    current_goal_pose_error = get_pose_error(wamv_pose, current_goal)
+                    if current_goal_pose_error < min_current_goal_pose_error:
+                        min_current_goal_pose_error = current_goal_pose_error
+
+                    if i == 1:
+                        timer_start = remaining_time
+                    if 12 < current_goal_pose_error < 13:
+                        timer_start = remaining_time
+
+                    print(timer)
+                    print('\n')
+
+                    # Perform station keeping if within 10 m from the goal else LOS guidance
+                    # Get the error values for either cases
+                    if euclidean_dist(wamv_pose, current_goal) < 11:
+                        # print("Station_keeping")
+                        timer = timer_start-remaining_time
+
+                        if timer > 40:
+                            min_current_goal_pose_error = 0.1
+
+                        er[0] = wamv_pose[0] - current_goal[0]
+                        er[1] = wamv_pose[1] - current_goal[1]
+                        er[2] = change_range(wamv_pose[2] - current_goal[2])
+
+                        # integral error in case of station keeping only
+                        er_int = er_int + (er)*(1/15)
+
+                        Kp = -np.array([[300, 0, 0],[0, 300, 0],[0, 0, 200]])       # Proportional gain
+                        Kd = np.array([[80, 0, 0],[0, 80, 0],[0, 0, -50]])           # Derivative gains
+                        Ki = -np.array([[0, 0, 0],[0, 0, 0],[0, 0, 1]])           # Integral 
+                        
+                        tau1 = Kp.dot(er) + Kd.dot(er_dot) + Ki.dot(er_int)
+
+                        # heading angle
+                        psi = wamv_pose[2]
+                        
+                        # # Needs some changes (correct relation between body-fixed frame thrusts and applied thrusts)
+                        # # Rotation matrix ( rotation about z by angle psi )
+                        rot_mat = np.array([[cos(psi), -sin(psi), 0], [sin(psi), cos(psi), 0], [0, 0, 1]])
+                        # Thrust alocation to Body frame
+                        # t_mat = np.array([[1, 1, 0], [0, 0, 1], [-1, 1, 0]])
+                        t_mat = np.array([[1, 1, 0], [0, 0, 1], [-1, 1, 0]])
+        
+                        # Resultant matrix
+                        res_mat = rot_mat.dot(t_mat)
+                        res_mat_inv = np.linalg.inv(res_mat)
+                        
+                        # Calculation of actual thrusts to provide
+                        tau2 = res_mat_inv.dot(tau1)
+
+                    else:
+                        # print("LOS")
+                        # Get the required geometrical values for LOS guidance
+                        x_0 = goal_pose_seq[i-1][0]
+                        y_0 = goal_pose_seq[i-1][1]
+                        x_1 = goal_pose_seq[i][0]
+                        y_1 = goal_pose_seq[i][1]
+                        alpha = atan2(y_1-y_0,x_1-x_0)
+                        line_coeff = [y_1-y_0, -(x_1-x_0), x_1*y_0-x_0*y_1]
+                        e = crosstrack(wamv_pose, line_coeff)
+
+                        psi_d = atan2(goal_pose_seq[i][1]-goal_pose_seq[i-1][1], goal_pose_seq[i][0]-goal_pose_seq[i-1][0])
+                        # psi_d = atan2(y_los-wamv_pose[1], x_los-wamv_pose[0])
+                        # psi_d = atan2(y_1-y_0, x_1-x_0)
+                        
+                        Kp = np.array([[70, 0, 0],[0, 200, 0],[0, 0, 500]])       # Proportional gain
+                        Kd = np.array([[20, 0, 0],[0, 50, 0],[0, 0, 10]])           # Derivative gains
+                        
+                        er_los = np.array([0.0, 0, 0])
+                        er_los_dot = np.array([0.0, 0, 0])
+                        er_los[0] = delta
+                        er_los[1] = e
+                        er_los[2] = change_range(psi_d-wamv_pose[2])
+                        
+                        v = er_dot[1]
+                        u = er_dot[0]
+                        chi = atan2(v,u)
+                        U = sqrt(u**2 + v**2)
+                        theta = (pi/2) - chi + alpha
+                        
+                        er_los_dot[0] = U*cos(theta)
+                        er_los_dot[1] = U*sin(theta)
+                        er_los_dot[2] = er_dot[2]
+
+                        # heading angle
+                        psi = wamv_pose[2] - alpha
+                        
+                        # # Needs some changes (correct relation between body-fixed frame thrusts and applied thrusts)
+                        # # Rotation matrix ( rotation about z by angle psi )
+                        rot_mat = np.array([[cos(psi), -sin(psi), 0], [sin(psi), cos(psi), 0], [0, 0, 1]])
+                        # Thrust alocation to Body frame
+                        t_mat = np.array([[1, 1, 0], [0, 0, 1], [-1, 1, 0]])
+        
+                        # Resultant matrix
+                        res_mat = rot_mat.dot(t_mat)
+                        res_mat_inv = np.linalg.inv(res_mat)
+
+                        tau1 = Kp.dot(er_los) + Kd.dot(er_los_dot)
+                    
+                        # Calculation of actual thrusts to provide
+                        tau2 = res_mat_inv.dot(tau1)
+                    
+                    msg_l = inverse_glf_map(tau2[0])
+                    msg_r = inverse_glf_map(tau2[1])
+                    msg_lat = inverse_glf_map(tau2[2])
+                    
+                    pub_l_cmd.publish(msg_l)
+                    pub_r_cmd.publish(msg_r)
+                    pub_lat_cmd.publish(msg_lat)
+                    rate.sleep()
+                
+                print("Goal "+str(i)+" achieved!")
+                if i == len(goal_pose_seq)-1:
+                    print("All waypoints reached!")
+                    exit()
+
 
 

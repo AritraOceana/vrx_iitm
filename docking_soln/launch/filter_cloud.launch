@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+	<!-- Launch Localization -->
+	<include file="$(find docking_soln)/launch/localization.launch"/>
+	<!-- Apply Voxel and PassThrough Filters -->
+	<node name="passthrough_filter" pkg="docking_soln" type="passthrough_filter" />
+	<node name="voxel_filter" pkg="docking_soln" type="voxel_filter" />
+</launch>
