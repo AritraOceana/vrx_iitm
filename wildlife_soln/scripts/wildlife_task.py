@@ -18,6 +18,7 @@ goal_pose_seq = []             # List to store the goal poses in the sequence in
 obstacles_list = []            # List to store the obstacle poses
 wamv_initial_pose = []         # To store the initial pose
 wamv_pose = np.zeros(3)        # To store the current pose
+obstacle_avoided = False
 
 
 er = np.array([-2.0, -6, -10]) # the global variable er =[e_x, e_y, e_yaw]
@@ -68,8 +69,8 @@ def update_seq(pose_list, initial_pose):
         y_1 = pose_seq[i+1][1]
         if (x_1-x_0)**2 + (y_1-y_0)**2 > 225:
             alpha = atan2(y_1-y_0,x_1-x_0)
-            x_s = x_1 - 15*cos(alpha)
-            y_s = y_1 - 15*sin(alpha)
+            x_s = x_1 - 13*cos(alpha)
+            y_s = y_1 - 13*sin(alpha)
             pose = [x_s, y_s, alpha, 0]
         else:
             pose = [x_1,y_1,alpha,0]
@@ -179,8 +180,8 @@ def station_keeping(my_pose, goal_pose, vel):
     er_dot[1] = vel[1]
     er_dot[2] = vel[2]
 
-    Kp = -np.array([[90, 0, 0],[0, 90, 0],[0, 0, 120]])       # Proportional gain
-    Kd = np.array([[120, 0, 0],[0, 120, 0],[0, 0, -50]])        # Derivative gains
+    Kp = -np.array([[300, 0, 0],[0, 300, 0],[0, 0, 200]])       # Proportional gain
+    Kd = np.array([[150, 0, 0],[0, 150, 0],[0, 0, -50]])        # Derivative gains
 
     tau_pid = Kp.dot(er) + Kd.dot(er_dot)                       # PID controller output
     psi = my_pose[2]
@@ -212,7 +213,7 @@ def over_control(my_pose, goal_pose, vel):
     er_dot[2] = vel[2]
 
     Kp = -np.array([[65, 0, 0],[0, 65, 0],[0, 0, 150]])       # Proportional gain
-    Kd = np.array([[120, 0, 0],[0, 120, 0],[0, 0, -50]])        # Derivative gains
+    Kd = np.array([[150, 0, 0],[0, 150, 0],[0, 0, -50]])        # Derivative gains
 
     tau_pid = Kp.dot(er) + Kd.dot(er_dot)                       # PID controller output
     psi = my_pose[2]
@@ -245,7 +246,7 @@ def line_following(my_pose, first_pose, second_pose, vel):
     psi_d = atan2(y_1-my_pose[1], x_1-my_pose[0])               # Desired heading
 
     Kp = np.array([[60, 0, 0],[0, 100, 0],[0, 0, 100]])         # Proportional gain
-    Kd = np.array([[120, 0, 0],[0, 30, 0],[0, 0, 10]])           # Derivative gains
+    Kd = np.array([[150, 0, 0],[0, 80, 0],[0, 0, 10]])           # Derivative gains
 
     er_los = np.array([0.0, 0, 0])
     er_los_dot = np.array([0.0, 0, 0])
@@ -423,7 +424,7 @@ if __name__ == '__main__':
                             obs_points = 0
 
                             if abs(crosstrack(obstacle_pose, goal_pose_seq[i-1], goal_pose_seq[i])) < 10:
-                                if euclidean_dist(wamv_pose, obstacle_pose) < 14:
+                                if (euclidean_dist(wamv_pose, obstacle_pose) < 14) and not(obstacle_avoided):
 
                                     print("Obstacle encountered!!")
                                     print(euclidean_dist(wamv_pose, obstacle_pose))
@@ -433,7 +434,7 @@ if __name__ == '__main__':
                                     # phi = pi/6
                                     R = np.array([[cos(phi), -sin(phi), 0], [sin(phi), cos(phi), 0], [0, 0, 1]])
 
-                                    while obs_points < 5:
+                                    while obs_points < 4:
 
                                         obstacle_pose[0] = obstacles_list[0][0]
                                         obstacle_pose[1] = obstacles_list[0][1]
@@ -460,6 +461,8 @@ if __name__ == '__main__':
                                         first_pose = second_pose
                                         print("Circle point crossed!")
 
+                                        if obs_points == 3:
+                                            obstacle_avoided = True
 
                             
                             print("LOS")
@@ -493,7 +496,7 @@ if __name__ == '__main__':
                     R = np.array([[cos(phi), -sin(phi), 0], [sin(phi), cos(phi), 0], [0, 0, 1]])
 
                     circle_pts = 0
-                    max_pts = 35
+                    max_pts = 37
                     while circle_pts < max_pts:
                     # Get the error values for either cases
                         animal_pose = np.array([0.0, 0, 0])
@@ -510,7 +513,7 @@ if __name__ == '__main__':
                                 
                             second_pose = animal_pose + R.dot(first_pose-animal_pose)
                             
-                            while(along_track(wamv_pose,first_pose,second_pose)>3.5 or along_track(wamv_pose,first_pose,second_pose)<-1):
+                            while(along_track(wamv_pose,first_pose,second_pose)>4.5 or along_track(wamv_pose,first_pose,second_pose)<-1):
 
                                 msg_l,msg_r,msg_lat = encountering_maneuver_segment(wamv_pose, first_pose, second_pose, twist)
                                 
@@ -548,15 +551,15 @@ if __name__ == '__main__':
                             pub_lat_cmd.publish(msg_lat)
                             rate.sleep()
                     
-                    if circle_pts >= max_pts-1:
-                        print("Maneuver completed!!")
-                        msg_l = 1.0
-                        msg_r = 1.0
-                        for num in range(5):
-                            print(num)
-                            pub_l_cmd.publish(msg_l)
-                            pub_r_cmd.publish(msg_r)
-                            rate.sleep()
+                    # if circle_pts >= max_pts-1:
+                    #     print("Maneuver completed!!")
+                    #     msg_l = 1.0
+                    #     msg_r = 1.0
+                    #     for num in range(5):
+                    #         print(num)
+                    #         pub_l_cmd.publish(msg_l)
+                    #         pub_r_cmd.publish(msg_r)
+                    #         rate.sleep()
                 
                 print("Goal "+str(i)+" achieved!")
                 if i == len(goal_pose_seq)-1:
